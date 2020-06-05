@@ -999,6 +999,10 @@ func (s *Server) serveX11Channels() error {
 
 // handleX11Forward handles an X11 forwarding request from the client.
 func (s *Server) handleX11Forward(ch ssh.Channel, req *ssh.Request, ctx *srv.ServerContext) error {
+	if !ctx.Identity.RoleSet.PermitX11Forwarding() {
+		s.replyError(ch, req, trace.AccessDenied("X11 forwarding not permitted"))
+		return nil
+	}
 	ok, err := forwardRequest(ctx.RemoteSession, req)
 	if err != nil || !ok {
 		return trace.Wrap(err)
