@@ -66,9 +66,10 @@ func (kind WatchKind) Matches(e Event) (bool, error) {
 		return false, nil
 	}
 	if len(kind.Filter) > 0 {
-		// no filters currently match delete events
+		// we don't have a good model for filtering non-put events,
+		// so just match all of them and let the caller sort it out.
 		if e.Type != backend.OpPut {
-			return false, nil
+			return true, nil
 		}
 		// Currently only access request make use of filters,
 		// so expect the resource to be an access request.
