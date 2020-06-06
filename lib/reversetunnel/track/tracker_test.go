@@ -78,11 +78,15 @@ func (s *simpleTestProxies) GetRandProxy() (p testProxy, ok bool) {
 }
 
 func (s *simpleTestProxies) Discover(tracker *Tracker, lease Lease) (ok bool) {
-	defer lease.Release()
 	proxy, ok := s.GetRandProxy()
 	if !ok {
 		panic("discovery called with no available proxies")
 	}
+	return s.ProxyLoop(tracker, lease, proxy)
+}
+
+func (s *simpleTestProxies) ProxyLoop(tracker *Tracker, lease Lease, proxy testProxy) (ok bool) {
+	defer lease.Release()
 	timeout := time.After(proxy.life)
 	ok = tracker.WithProxy(func() {
 		ticker := time.NewTicker(jitter(time.Millisecond * 100))
@@ -193,7 +197,14 @@ Loop0:
 		select {
 		case lease := <-tracker.Acquire():
 			c.Assert(lease.Key().(Key), check.DeepEquals, key)
-			go proxies.Discover(tracker, lease)
+			// get our "discovered" proxy in the foreground
+			// to prevent race with the call to RemoveRandProxies
+			// that comes after this loop.
+			proxy, ok := proxies.GetRandProxy()
+			if !ok {
+				panic("failed to get test proxy")
+			}
+			go proxies.ProxyLoop(tracker, lease, proxy)
 		case <-ticker.C:
 			counts := tracker.wp.Get(key)
 			c.Logf("Counts0: %+v", counts)
