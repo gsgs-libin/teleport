@@ -12,7 +12,7 @@ import (
 	"github.com/gravitational/teleport"
 	kubeutils "github.com/gravitational/teleport/lib/kube/utils"
 	"github.com/gravitational/trace"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/transport"
 
@@ -36,12 +36,16 @@ type kubeCreds struct {
 	targetAddr string
 }
 
-func getKubeCreds(kubeconfigPath string) (*kubeCreds, error) {
+func getKubeCreds(log logrus.FieldLogger, kubeconfigPath string) (*kubeCreds, error) {
 	var cfg *rest.Config
 	// no kubeconfig is set, assume auth server is running in the cluster
 	if kubeconfigPath == "" {
 		caPEM, err := ioutil.ReadFile(teleport.KubeCAPath)
 		if err != nil {
+			if os.IsNotExist(err) {
+				log.Debugf("kubeconfig_file was not provided in the config and %q doesn't exist; this proxy will still be able to forward requests to trusted leaf Teleport clusters, but not to a Kubernetes cluster directly", teleport.KubeCAPath)
+				return nil, nil
+			}
 			return nil, trace.BadParameter(`auth server assumed that it is
 running in a kubernetes cluster, but %v mounted in pods could not be read: %v,
 set kubeconfig_file if auth server is running outside of the cluster`, teleport.KubeCAPath, err)
@@ -99,5 +103,8 @@ func parseKubeHost(host string) (string, error) {
 }
 
 func (c *kubeCreds) wrapTransport(rt http.RoundTripper) (http.RoundTripper, error) {
+	if c == nil {
+		return rt, nil
+	}
 	return transport.HTTPWrappersForConfig(c.transportConfig, rt)
 }

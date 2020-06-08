@@ -477,6 +477,9 @@ func (s *KubeSuite) TestKubeTrustedClustersClientCert(c *check.C) {
 
 	clusterMain := "cluster-main"
 	mainConf := s.teleKubeConfig(Host)
+	// Main cluster doesn't need a kubeconfig to forward requests to auxiliary
+	// cluster.
+	mainConf.Proxy.Kube.KubeconfigPath = ""
 	main := NewInstance(InstanceConfig{
 		ClusterName: clusterMain,
 		HostID:      HostID,

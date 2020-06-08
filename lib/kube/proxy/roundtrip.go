@@ -157,7 +157,7 @@ func (s *SpdyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	header.Add(httpstream.HeaderConnection, httpstream.HeaderUpgrade)
 	header.Add(httpstream.HeaderUpgrade, streamspdy.HeaderSpdy31)
 
-	if err := setupImpersonationHeaders(log.StandardLogger(), &s.authCtx, header); err != nil {
+	if err := setupImpersonationHeaders(log.StandardLogger(), s.authCtx, header); err != nil {
 		return nil, trace.Wrap(err)
 	}
 
